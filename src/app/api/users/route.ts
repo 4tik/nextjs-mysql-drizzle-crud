@@ -1,16 +1,14 @@
 import { NextResponse } from "next/server";
-import { db } from "@/src/db/index";
-import { users } from "@/src/db/schema";
-import { desc } from "drizzle-orm";
+import {
+    getUsers,
+    createUser,
+} from "@/src/services/user.service";
 
 export async function GET() {
     try {
-        const result = await db
-            .select()
-            .from(users)
-            .orderBy(desc(users.id));
+        const users = await getUsers();
 
-        return NextResponse.json(result);
+        return NextResponse.json(users);
     } catch (error) {
         console.error("GET USERS ERROR:", error);
 
@@ -46,25 +44,20 @@ export async function POST(request: Request) {
             );
         }
 
-        const result = await db
-            .insert(users)
-            .values({
-                name,
-                email,
-            });
-
-        console.log("INSERT RESULT:", result);
+        const user = await createUser({
+            name,
+            email,
+        });
 
         return NextResponse.json(
             {
                 message: "User created successfully",
-                id: result[0].insertId,
+                user,
             },
             {
                 status: 201,
             }
         );
-
     } catch (error) {
         console.error("CREATE USER ERROR:", error);
 

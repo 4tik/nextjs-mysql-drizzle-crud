@@ -1,13 +1,10 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import type { User, UserPayload } from "@/src/types/user";
+import Modal from "@/src/components/Modal";
+import { saveUser } from "@/src/services/user.service";
 
-type User = {
-    id: number;
-    name: string;
-    email: string;
-    createdAt: string;
-};
 
 export default function UsersPage() {
     const [users, setUsers] = useState<User[]>([]);
@@ -15,6 +12,10 @@ export default function UsersPage() {
 
     const [showModal, setShowModal] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [formData, setFormData] = useState<UserPayload>({
+        name: "",
+        email: "",
+    });
 
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
@@ -23,8 +24,6 @@ export default function UsersPage() {
 
     async function fetchUsers() {
         try {
-            setLoading(true);
-
             const response = await fetch("/api/users");
             const data = await response.json();
 
@@ -37,6 +36,7 @@ export default function UsersPage() {
     }
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchUsers();
     }, []);
 
@@ -72,30 +72,13 @@ export default function UsersPage() {
         try {
             setSaving(true);
 
-            const url = editingUser
-                ? `/api/users/${editingUser.id}`
-                : "/api/users";
-
-            const method = editingUser ? "PUT" : "POST";
-
-            const response = await fetch(url, {
-                method,
-                headers: {
-                    "Content-Type": "application/json",
+            await saveUser(
+                {
+                    name: formData.name.trim(),
+                    email: formData.email.trim(),
                 },
-                body: JSON.stringify({
-                    name: name.trim(),
-                    email: email.trim(),
-                }),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(
-                    data?.message || "Failed to save user"
-                );
-            }
+                editingUser?.id
+            );
 
             closeModal();
 
@@ -155,7 +138,7 @@ export default function UsersPage() {
 
                     <button
                         onClick={openCreateModal}
-                        className="rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-700"
+                        className=" bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-700"
                     >
                         + Add User
                     </button>
@@ -163,15 +146,6 @@ export default function UsersPage() {
 
                 {/* Card */}
                 <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-
-                    {/* Search */}
-                    <div className="border-b border-slate-200 p-4">
-                        <input
-                            type="text"
-                            placeholder="Search users..."
-                            className="w-full max-w-md rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
-                        />
-                    </div>
 
                     {/* Table */}
                     <div className="overflow-x-auto">
@@ -272,93 +246,67 @@ export default function UsersPage() {
                 </div>
             </div>
 
-            {/* Modal */}
-            {showModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <Modal open={showModal} onClose={closeModal} title="User" >
+                {/* Form */}
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                            Name
+                        </label>
 
-                    <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
-
-                        {/* Modal Header */}
-                        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-                            <div>
-                                <h2 className="text-lg font-semibold text-slate-900">
-                                    {editingUser ? "Edit User" : "Add User"}
-                                </h2>
-
-                                <p className="mt-1 text-xs text-slate-500">
-                                    {editingUser
-                                        ? "Update user information"
-                                        : "Create a new user"}
-                                </p>
-                            </div>
-
-                            <button
-                                onClick={closeModal}
-                                className="text-xl text-slate-400 hover:text-slate-700"
-                            >
-                                ×
-                            </button>
-                        </div>
-
-                        {/* Form */}
-                        <form
-                            onSubmit={handleSubmit}
-                            className="space-y-5 p-6"
-                        >
-                            <div>
-                                <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                                    Name
-                                </label>
-
-                                <input
-                                    type="text"
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    placeholder="Enter name"
-                                    className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                                    Email
-                                </label>
-
-                                <input
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="Enter email"
-                                    className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
-                                />
-                            </div>
-
-                            {/* Buttons */}
-                            <div className="flex justify-end gap-3 border-t border-slate-100 pt-5">
-                                <button
-                                    type="button"
-                                    onClick={closeModal}
-                                    className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                                >
-                                    Cancel
-                                </button>
-
-                                <button
-                                    type="submit"
-                                    disabled={saving}
-                                    className="rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
-                                >
-                                    {saving
-                                        ? "Saving..."
-                                        : editingUser
-                                            ? "Update User"
-                                            : "Create User"}
-                                </button>
-                            </div>
-                        </form>
+                        <input
+                            type="text"
+                            value={formData.name}
+                            onChange={(e) =>
+                                setFormData({
+                                    ...formData,
+                                    name: e.target.value,
+                                })
+                            }
+                            placeholder="Enter name"
+                            className="w-full rounded-md border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+                        />
                     </div>
-                </div>
-            )}
+
+                    <div>
+                        <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                            Email
+                        </label>
+
+                        <input
+                            type="email"
+                            value={formData.email}
+                            onChange={(e) =>
+                                setFormData({
+                                    ...formData,
+                                    email: e.target.value,
+                                })
+                            }
+                            placeholder="Enter email"
+                            className="w-full rounded-md border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+                        />
+                    </div>
+
+                    {/* Buttons */}
+                    <div className="flex justify-end gap-3 border-t border-slate-200 pt-2">
+                        <button
+                            type="button"
+                            onClick={closeModal}
+                            className="border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                        >
+                            Cancel
+                        </button>
+
+                        <button
+                            type="submit"
+                            disabled={saving}
+                            className="bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            Submit
+                        </button>
+                    </div>
+                </form>
+            </Modal>
         </main>
     );
 }
